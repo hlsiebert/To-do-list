@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyi
+*env*/
+venv/
+ENV/
+env/
+.pytest_cache/
+.pytest_cache
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Test cache and coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+pytest_cache/
+
+# Editor and IDE settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Local development files
+local_settings.py
+*.env
+.env.*
+.DS_Store
