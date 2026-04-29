@@ -1,23 +1,7 @@
 flowchart TD
-    subgraph API
-        A[API Controller] --> B[Service Layer]
-    end
-
-    subgraph Domain
-        B --> C[PriorityAdvisor]
-        B --> D[Repository Layer]
-    end
-
-    subgraph Persistence
-        D --> E[Database]
-    end
-
-    A -- Request --> B
-    B -- Consulta/salva tarefa --> D
-    B -- Sugestão de prioridade --> C
-    C -- Prioridade sugerida --> B
-    D -- Dados de tarefa --> B
-    B -- Response --> A
-
-    classDef component fill:#f9f,stroke:#333,stroke-width:1px;
-    class A,B,C,D,E component;
+    C[Client] --> A[FastAPI App]
+    A --> R[Task Routes]
+    R --> S[Task Service]
+    S --> P[Priority Advisor]
+    S --> REPO[Task Repository]
+    REPO --> DB[(SQLite)]
