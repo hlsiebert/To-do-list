@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, Response, status
 
 from app.models.tasks import TaskCreate, TaskResponse, TaskUpdate
@@ -26,8 +28,8 @@ def list_tasks() -> list[TaskResponse]:
 
 
 @router.get("/{task_id}", response_model=TaskResponse, status_code=status.HTTP_200_OK)
-def get_task(task_id: int) -> TaskResponse:
-    """Get a task by id."""
+def get_task(task_id: UUID) -> TaskResponse:
+    """Get a task by UUID."""
     task = _service.get_task_by_id(task_id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
@@ -35,8 +37,8 @@ def get_task(task_id: int) -> TaskResponse:
 
 
 @router.put("/{task_id}", response_model=TaskResponse, status_code=status.HTTP_200_OK)
-def update_task(task_id: int, payload: TaskUpdate) -> TaskResponse:
-    """Update a task by id."""
+def update_task(task_id: UUID, payload: TaskUpdate) -> TaskResponse:
+    """Update a task by UUID."""
     task = _service.update_task(task_id, payload)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
@@ -44,8 +46,8 @@ def update_task(task_id: int, payload: TaskUpdate) -> TaskResponse:
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int) -> Response:
-    """Delete a task by id."""
+def delete_task(task_id: UUID) -> Response:
+    """Delete a task by UUID."""
     deleted = _service.delete_task(task_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
