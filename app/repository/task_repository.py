@@ -21,6 +21,32 @@ class TaskRepository:
         """Creates a connection with rows accessible by column name."""
         return get_connection(self._db_path)
 
+    def _task_id_param(self, task_id: UUID) -> str:
+        """Converts UUID to SQL parameter format."""
+        return str(task_id)
+
+    def _serialize_datetime(self, value: datetime | None) -> str | None:
+        """Serializes datetime to ISO-8601 string."""
+        return value.isoformat() if value else None
+
+    def _build_update_statement(
+        self,
+        payload: dict[str, object],
+    ) -> tuple[str, list[object]]:
+        """Builds dynamic SQL fragment and values for task update."""
+        fields: list[str] = []
+        values: list[object] = []
+
+        for key, value in payload.items():
+            if isinstance(value, datetime):
+                value = value.isoformat()
+            fields.append(f"{key} = ?")
+            values.append(value)
+
+        fields.append("updated_at = ?")
+        values.append(datetime.now().isoformat())
+        return ", ".join(fields), values
+
     def _row_to_task(self, row: sqlite3.Row) -> TaskResponse:
         """Maps a database row to a TaskResponse model."""
         return TaskResponse(
@@ -39,7 +65,7 @@ class TaskRepository:
     def create(self, task: TaskCreate) -> TaskResponse:
         """Inserts a new task and returns the persisted record."""
         now = datetime.now().isoformat()
-        due_date = task.due_date.isoformat() if task.due_date else None
+        due_date = self._serialize_datetime(task.due_date)
         task_id = uuid4()
 
         with self._connect() as connection:
@@ -49,7 +75,7 @@ class TaskRepository:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    str(task_id),
+                    self._task_id_param(task_id),
                     task.title,
                     task.description,
                     task.priority,
@@ -76,7 +102,7 @@ class TaskRepository:
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT * FROM tasks WHERE id = ?",
-                (str(task_id),),
+                (self._task_id_param(task_id),),
             ).fetchone()
 
         if row is None:
@@ -93,20 +119,9 @@ class TaskRepository:
         if not payload:
             return current_task
 
-        fields: list[str] = []
-        values: list[object] = []
-
-        for key, value in payload.items():
-            if isinstance(value, datetime):
-                value = value.isoformat()
-            fields.append(f"{key} = ?")
-            values.append(value)
-
-        fields.append("updated_at = ?")
-        values.append(datetime.now().isoformat())
-        values.append(str(task_id))
-
-        query = f"UPDATE tasks SET {', '.join(fields)} WHERE id = ?"
+        set_clause, values = self._build_update_statement(payload)
+        values.append(self._task_id_param(task_id))
+        query = f"UPDATE tasks SET {set_clause} WHERE id = ?"
 
         with self._connect() as connection:
             connection.execute(query, values)
@@ -119,7 +134,7 @@ class TaskRepository:
         with self._connect() as connection:
             cursor = connection.execute(
                 "DELETE FROM tasks WHERE id = ?",
-                (str(task_id),),
+                (self._task_id_param(task_id),),
             )
             connection.commit()
 

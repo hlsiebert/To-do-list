@@ -1,75 +1,156 @@
 # To-do List API
 
-Uma micro-API para gestÃ£o de tarefas com priorizaÃ§Ã£o assistida por IA. Projeto leve para organizar tarefas, definir prioridades e suportar integraÃ§Ã£o rÃ¡pida com clientes e automaÃ§Ãµes.
+MicroAPI de tarefas em FastAPI com prioridade assistida por IA e fallback heurístico local.
 
-## Objetivo
+## Visão Geral
 
-- Fornecer uma API simples para criar, atualizar, listar e remover tarefas.
-- Aplicar priorizaÃ§Ã£o inteligente para ajudar na organizaÃ§Ã£o de atividades mais importantes.
-- Servir como base para evoluÃ§Ã£o em direÃ§Ã£o a workflows colaborativos, dashboards e alertas.
+Este projeto implementa um MVP para gestão interna de tarefas com:
 
-## Stack
+- CRUD completo de tarefas
+- Persistência em SQLite
+- Camada de serviço separada da API
+- Sugestão de prioridade via LLM (quando disponível)
+- Fallback seguro para heurística local
 
-- Python 3.x
+## Funcionalidades do MVP
+
+- Criar tarefa (`POST /tasks`)
+- Listar tarefas (`GET /tasks`)
+- Buscar tarefa por ID (`GET /tasks/{task_id}`)
+- Atualizar tarefa (`PUT /tasks/{task_id}`)
+- Excluir tarefa (`DELETE /tasks/{task_id}`)
+- Health check (`GET /`)
+
+## Stack Técnica
+
+- Python 3.12+
 - FastAPI
+- Pydantic v2
+- SQLite
 - Uvicorn
-- Pydantic
-- SQLite (ou outra base leve para protÃ³tipos)
-- Git
+- Pytest
 
-## Como rodar localmente
+## Estrutura do Projeto
 
-1. Clone o repositÃ³rio:
-   ```bash
-   git clone <url-do-repositorio>
-   cd To-do-list
-   ```
+```text
+app/
+  api/
+    task_routes.py
+  models/
+    tasks.py
+  repository/
+    task_repository.py
+  services/
+    task_service.py
+    priority_advisor.py
+  database.py
+  main.py
+tests/
+  test_task_routes.py
+  test_task_service.py
+  test_priority_advisor.py
+```
 
-2. Crie o ambiente virtual ou ative o existente:
-   ```bash
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
+## Instalação
 
-3. Instale as dependÃªncias:
-   ```bash
-   pip install fastapi uvicorn
-   ```
+1. Clone o repositório.
+2. Crie e ative o ambiente virtual.
+3. Instale as dependências.
 
-4. Inicie a aplicaÃ§Ã£o:
-   ```bash
-   uvicorn main:app --reload
-   ```
+```bash
+python -m venv .venv
+# PowerShell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install pytest
+```
 
-5. Abra o navegador em:
-   ```
-   http://127.0.0.1:8000/docs
-   ```
+## Execução
 
-## Roadmap de releases
+Suba a API com recarregamento automático:
 
-### MVP
+```bash
+uvicorn app.main:app --reload
+```
 
-- CRUD de tarefas
-- DefiniÃ§Ã£o de prioridade
-- Endpoints REST bÃ¡sicos
-- DocumentaÃ§Ã£o automÃ¡tica via Swagger UI
+Acesse:
 
-### PrÃ³ximas entregas
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
+- Health check: `http://127.0.0.1:8000/`
 
-- PersistÃªncia de dados com SQLite ou PostgreSQL
-- Filtro por prioridade e status
-- OrdenaÃ§Ã£o inteligente de tarefas
-- AutenticaÃ§Ã£o bÃ¡sica
+## Testes
 
-### VisÃ£o de mÃ©dio prazo
+Executar toda a suíte:
 
-- IntegraÃ§Ã£o com assistente de IA para sugerir prioridades
-- Painel de tarefas por usuÃ¡rio e por categoria
-- NotificaÃ§Ãµes e lembretes
-- API pÃºblica para consumo por clientes web e mobile
+```bash
+pytest -q
+```
 
-## ObservaÃ§Ãµes
+Executar por arquivo:
 
-- Este repositÃ³rio Ã© voltado para prototipagem rÃ¡pida e evoluÃ§Ã£o incremental.
-- Mantenha o ambiente virtual isolado e nÃ£o versionar dependÃªncias diretas no projeto.
+```bash
+pytest tests/test_task_routes.py -q
+pytest tests/test_task_service.py -q
+pytest tests/test_priority_advisor.py -q
+```
+
+## Arquitetura
+
+A arquitetura segue separação por responsabilidades:
+
+- `API` (`app/api/task_routes.py`): entrada HTTP, status codes e tratamento de 404.
+- `Service` (`app/services/task_service.py`): regras de negócio e orquestração.
+- `Repository` (`app/repository/task_repository.py`): acesso e persistência de dados em SQLite.
+- `Advisor` (`app/services/priority_advisor.py`): sugestão de prioridade com IA/fallback.
+- `Models` (`app/models/tasks.py`): contratos de entrada e saída (Pydantic).
+
+Fluxo principal:
+
+`Client -> Routes -> TaskService -> (PriorityAdvisor + TaskRepository) -> SQLite`
+
+## Uso da IA para Prioridade
+
+O `PriorityAdvisor` funciona em dois modos:
+
+1. Com `OPENAI_API_KEY` configurada:
+   - tenta chamada ao endpoint de modelo
+   - usa timeout curto
+   - interpreta retorno para prioridade numérica
+2. Sem chave (ou em caso de falha externa):
+   - aplica heurística local por palavras-chave
+   - mantém comportamento estável sem interromper a API
+
+### Configuração opcional da chave
+
+PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY = "sua_chave"
+```
+
+## Modelo de Dados (resumo)
+
+- `id`: UUID
+- `title`: string
+- `description`: string
+- `priority`: `baixa | media | alta | critica`
+- `status`: `pendente | em_andamento | concluida`
+- `created_at`, `updated_at`, `due_date`
+
+## Limitações Atuais
+
+- Sem autenticação/autorização
+- Sem paginação/filtros avançados
+- Sem migrações formais de banco (além da inicialização/migração básica)
+- Sem suíte de testes de integração com banco externo
+- Dependência de heurística simples no fallback de prioridade
+
+## Próximos Passos
+
+- Adicionar filtros por prioridade e status nos endpoints
+- Implementar paginação e ordenação por query params
+- Criar camada de configuração por ambiente (`dev/test/prod`)
+- Adotar migrações versionadas (ex.: Alembic)
+- Expandir testes para cenários de validação e concorrência
+- Incluir observabilidade básica (logs estruturados + métricas)

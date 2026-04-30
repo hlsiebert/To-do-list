@@ -11,6 +11,13 @@ from app.services.priority_advisor import PriorityAdvisor, PriorityAdvisorProtoc
 
 class TaskService:
     """Coordinates repository access and task business rules."""
+    _PRIORITY_MAP: dict[int, TaskPriority] = {
+        1: "baixa",
+        2: "baixa",
+        3: "media",
+        4: "alta",
+        5: "critica",
+    }
 
     def __init__(
         self,
@@ -22,23 +29,35 @@ class TaskService:
 
     def _normalize_priority(self, value: int) -> TaskPriority:
         """Maps numeric priority from advisor into domain priority labels."""
-        mapping: dict[int, TaskPriority] = {
-            1: "baixa",
-            2: "baixa",
-            3: "media",
-            4: "alta",
-            5: "critica",
-        }
-        return mapping.get(value, "media")
+        return self._PRIORITY_MAP.get(value, "media")
+
+    def _suggest_priority_label(self, title: str, description: str) -> TaskPriority:
+        """Gets numeric suggestion and converts it to domain priority label."""
+        suggested_priority = self._priority_advisor.suggest_priority(
+            title=title,
+            description=description,
+        )
+        return self._normalize_priority(suggested_priority)
+
+    def _build_priority_context(
+        self,
+        update_data: dict[str, object],
+        current_task: TaskResponse,
+    ) -> tuple[str, str]:
+        """Builds title/description context used for priority recalculation."""
+        title = str(update_data.get("title", current_task.title))
+        description = str(update_data.get("description", current_task.description))
+        return title, description
 
     def create_task(self, payload: TaskCreate) -> TaskResponse:
         """Creates a task applying automatic priority suggestion."""
-        suggested_priority = self._priority_advisor.suggest_priority(
-            title=payload.title,
-            description=payload.description,
-        )
         task_data = payload.model_copy(
-            update={"priority": self._normalize_priority(suggested_priority)}
+            update={
+                "priority": self._suggest_priority_label(
+                    title=payload.title,
+                    description=payload.description,
+                )
+            }
         )
         return self._repository.create(task_data)
 
@@ -63,10 +82,11 @@ class TaskService:
             if current_task is None:
                 return None
 
-            title = update_data.get("title", current_task.title)
-            description = update_data.get("description", current_task.description)
-            suggested = self._priority_advisor.suggest_priority(title=title, description=description)
-            update_data["priority"] = self._normalize_priority(suggested)
+            title, description = self._build_priority_context(update_data, current_task)
+            update_data["priority"] = self._suggest_priority_label(
+                title=title,
+                description=description,
+            )
 
         return self._repository.update(task_id, TaskUpdate(**update_data))
 
