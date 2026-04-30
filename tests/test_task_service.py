@@ -11,7 +11,7 @@ from app.services.task_service import TaskService
 
 
 class StubPriorityAdvisor:
-    """Advisor simples para manter testes determinísticos."""
+    """Simple advisor to keep tests deterministic."""
 
     def __init__(self, value: int = 4) -> None:
         self.value = value
@@ -21,18 +21,21 @@ class StubPriorityAdvisor:
 
 
 @pytest.fixture
-def task_service(tmp_path: Path) -> TaskService:
-    """Cria TaskService com SQLite temporário por teste."""
-    db_path = tmp_path / "tasks_test.db"
-    repository = TaskRepository(db_path=str(db_path))
+def task_service() -> TaskService:
+    """Creates TaskService with temporary SQLite per test."""
+    base_dir = Path("tests") / "_runtime_db"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    db_file = base_dir / f"service_{uuid4()}.db"
+
+    repository = TaskRepository(db_path=str(db_file))
     advisor = StubPriorityAdvisor(value=4)
     return TaskService(repository=repository, priority_advisor=advisor)
 
 
 def test_create_task_should_persist_and_return_task(task_service: TaskService) -> None:
     payload = TaskCreate(
-        title="Preparar release",
-        description="Validar checklist final",
+        title="Prepare release",
+        description="Validate final checklist",
         priority="baixa",
         status="pendente",
     )
@@ -49,13 +52,13 @@ def test_create_task_should_persist_and_return_task(task_service: TaskService) -
 def test_list_tasks_should_return_all_created_tasks(task_service: TaskService) -> None:
     first = TaskCreate(
         title="Task 1",
-        description="Descricao 1",
+        description="Description 1",
         priority="media",
         status="pendente",
     )
     second = TaskCreate(
         title="Task 2",
-        description="Descricao 2",
+        description="Description 2",
         priority="media",
         status="pendente",
     )
@@ -73,8 +76,8 @@ def test_list_tasks_should_return_all_created_tasks(task_service: TaskService) -
 def test_update_task_should_change_fields(task_service: TaskService) -> None:
     created = task_service.create_task(
         TaskCreate(
-            title="Task antiga",
-            description="Descricao antiga",
+            title="Old task",
+            description="Old description",
             priority="baixa",
             status="pendente",
         )
@@ -83,24 +86,24 @@ def test_update_task_should_change_fields(task_service: TaskService) -> None:
     updated = task_service.update_task(
         created.id,
         TaskUpdate(
-            title="Task nova",
-            description="Descricao nova",
+            title="New task",
+            description="New description",
             status="em_andamento",
         ),
     )
 
     assert updated is not None
     assert updated.id == created.id
-    assert updated.title == "Task nova"
-    assert updated.description == "Descricao nova"
+    assert updated.title == "New task"
+    assert updated.description == "New description"
     assert updated.status == "em_andamento"
 
 
 def test_delete_task_should_remove_existing_task(task_service: TaskService) -> None:
     created = task_service.create_task(
         TaskCreate(
-            title="Task para excluir",
-            description="Descricao",
+            title="Task to delete",
+            description="Description",
             priority="media",
             status="pendente",
         )
@@ -122,7 +125,7 @@ def test_get_task_by_id_should_return_none_for_nonexistent_id(task_service: Task
 def test_update_task_should_return_none_for_nonexistent_id(task_service: TaskService) -> None:
     updated = task_service.update_task(
         uuid4(),
-        TaskUpdate(title="Nao existe"),
+        TaskUpdate(title="Does not exist"),
     )
 
     assert updated is None

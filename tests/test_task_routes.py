@@ -12,18 +12,22 @@ from app.services.task_service import TaskService
 
 
 class StubPriorityAdvisor:
-    """Advisor fixo para manter os testes determinísticos."""
+    """Fixed advisor to keep tests deterministic."""
 
     def suggest_priority(self, title: str, description: str | None) -> int:
         return 4
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    """Cria cliente com service/repository isolados por teste."""
+def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """Creates a client with isolated service/repository per test."""
     from app.api import task_routes
 
-    repository = TaskRepository(db_path=str(tmp_path / "routes_test.db"))
+    base_dir = Path("tests") / "_runtime_db"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    db_file = base_dir / f"routes_{uuid4()}.db"
+
+    repository = TaskRepository(db_path=str(db_file))
     service = TaskService(repository=repository, priority_advisor=StubPriorityAdvisor())
     monkeypatch.setattr(task_routes, "_service", service)
 
@@ -34,8 +38,8 @@ def test_create_task_should_return_201(client: TestClient) -> None:
     response = client.post(
         "/tasks",
         json={
-            "title": "Criar endpoint",
-            "description": "Implementar CRUD",
+            "title": "Create endpoint",
+            "description": "Implement CRUD",
             "priority": "baixa",
             "status": "pendente",
         },
@@ -43,7 +47,7 @@ def test_create_task_should_return_201(client: TestClient) -> None:
 
     assert response.status_code == 201
     body = response.json()
-    assert body["title"] == "Criar endpoint"
+    assert body["title"] == "Create endpoint"
     assert body["priority"] == "alta"
 
 
@@ -52,7 +56,7 @@ def test_list_tasks_should_return_200(client: TestClient) -> None:
         "/tasks",
         json={
             "title": "Task 1",
-            "description": "Descricao 1",
+            "description": "Description 1",
             "priority": "media",
             "status": "pendente",
         },
@@ -68,8 +72,8 @@ def test_delete_task_should_return_204(client: TestClient) -> None:
     created = client.post(
         "/tasks",
         json={
-            "title": "Task para excluir",
-            "description": "Descricao",
+            "title": "Task to delete",
+            "description": "Description",
             "priority": "media",
             "status": "pendente",
         },
@@ -87,3 +91,36 @@ def test_get_task_with_nonexistent_id_should_return_404(client: TestClient) -> N
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Task not found"
+
+
+def test_create_task_with_missing_required_field_should_return_422(client: TestClient) -> None:
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Missing description",
+            "priority": "media",
+            "status": "pendente",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_invalid_priority_should_return_422(client: TestClient) -> None:
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Invalid task",
+            "description": "Priority out of domain",
+            "priority": "urgent",
+            "status": "pendente",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_get_task_with_invalid_uuid_should_return_422(client: TestClient) -> None:
+    response = client.get("/tasks/not-a-uuid")
+
+    assert response.status_code == 422
