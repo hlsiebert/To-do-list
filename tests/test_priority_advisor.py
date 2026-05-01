@@ -33,9 +33,10 @@ def test_should_return_highest_priority_for_urgent_keywords() -> None:
     assert priority == 5
 
 
-def test_should_return_high_priority_for_today_or_asap_keywords() -> None:
+def test_should_return_high_priority_for_today_or_asap_keywords(monkeypatch) -> None:
     advisor = PriorityAdvisor()
 
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     priority = advisor.suggest_priority(
         title="Enviar relatorio hoje",
         description="Precisa ser concluido asap",
