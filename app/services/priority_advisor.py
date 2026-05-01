@@ -1,4 +1,4 @@
-"""Priority advisor with LLM integration and safe local fallback."""
+"""Priority advisor with OpenAI integration and safe local fallback."""
 
 from __future__ import annotations
 
@@ -18,10 +18,20 @@ class PriorityAdvisorProtocol(Protocol):
 
 @dataclass(slots=True)
 class PriorityAdvisor:
-    """Uses LLM when available and falls back to local heuristics."""
+    """Uses OpenAI when available and falls back to local heuristics."""
 
     model: str = "gpt-4.1-mini"
     timeout_seconds: float = 4.0
+
+    def __post_init__(self) -> None:
+        """Loads optional runtime overrides from environment variables."""
+        self.model = os.getenv("OPENAI_MODEL", self.model)
+        timeout_value = os.getenv("PRIORITY_ADVISOR_TIMEOUT_SECONDS")
+        if timeout_value:
+            try:
+                self.timeout_seconds = float(timeout_value)
+            except ValueError:
+                pass
 
     def suggest_priority(self, title: str, description: str | None) -> int:
         """Returns a priority from 1 (low) to 5 (high)."""
@@ -73,7 +83,7 @@ class PriorityAdvisor:
                     "content": [{"type": "input_text", "text": prompt}],
                 },
             ],
-            "max_output_tokens": 10,
+            "max_output_tokens": 16,
         }
 
         req = request.Request(

@@ -1,8 +1,11 @@
 """FastAPI application entrypoint."""
 
 from fastapi import FastAPI
+from dotenv import load_dotenv
 
 from app.api.task_routes import router as task_router
+
+load_dotenv()
 
 app: FastAPI = FastAPI(
     title="To-do List API",
