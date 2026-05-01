@@ -4,12 +4,12 @@ MicroAPI de tarefas em FastAPI com prioridade assistida por IA e fallback heurí
 
 ## Visão Geral
 
-Este projeto implementa um MVP para gest�o interna de tarefas com:
+Este projeto implementa um MVP para gestão interna de tarefas com:
 
 - CRUD completo de tarefas
 - Persistência em SQLite
 - Camada de serviço separada da API
-- Sugestão de prioridade via LLM (quando dispon�vel)
+- Sugestão de prioridade via LLM (quando disponível)
 - Fallback seguro para heurística local
 
 ## Funcionalidades do MVP
