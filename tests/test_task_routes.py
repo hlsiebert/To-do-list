@@ -91,6 +91,96 @@ def test_list_tasks_should_return_200(client: TestClient) -> None:
     assert len(response.json()) == 1
 
 
+def test_list_tasks_should_filter_by_priority(client: TestClient) -> None:
+    client.post(
+        "/tasks",
+        json={
+            "title": "Task high",
+            "description": "Description 1",
+            "priority_mode": "manual",
+            "priority_manual": "alta",
+            "status": "pendente",
+        },
+    )
+    client.post(
+        "/tasks",
+        json={
+            "title": "Task low",
+            "description": "Description 2",
+            "priority_mode": "manual",
+            "priority_manual": "baixa",
+            "status": "pendente",
+        },
+    )
+
+    response = client.get("/tasks?priority=alta")
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["title"] == "Task high"
+
+
+def test_list_tasks_should_filter_by_status(client: TestClient) -> None:
+    client.post(
+        "/tasks",
+        json={
+            "title": "Task pending",
+            "description": "Description 1",
+            "priority_mode": "manual",
+            "priority_manual": "media",
+            "status": "pendente",
+        },
+    )
+    client.post(
+        "/tasks",
+        json={
+            "title": "Task done",
+            "description": "Description 2",
+            "priority_mode": "manual",
+            "priority_manual": "media",
+            "status": "concluida",
+        },
+    )
+
+    response = client.get("/tasks?status=concluida")
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["title"] == "Task done"
+
+
+def test_list_tasks_should_filter_by_priority_and_status(client: TestClient) -> None:
+    client.post(
+        "/tasks",
+        json={
+            "title": "Task target",
+            "description": "Description 1",
+            "priority_mode": "manual",
+            "priority_manual": "critica",
+            "status": "em_andamento",
+        },
+    )
+    client.post(
+        "/tasks",
+        json={
+            "title": "Task other",
+            "description": "Description 2",
+            "priority_mode": "manual",
+            "priority_manual": "critica",
+            "status": "pendente",
+        },
+    )
+
+    response = client.get("/tasks?priority=critica&status=em_andamento")
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["title"] == "Task target"
+
+
 def test_delete_task_should_return_204(client: TestClient) -> None:
     created = client.post(
         "/tasks",
@@ -188,5 +278,11 @@ def test_create_task_manual_mode_without_priority_manual_should_return_422(clien
 
 def test_get_task_with_invalid_uuid_should_return_422(client: TestClient) -> None:
     response = client.get("/tasks/not-a-uuid")
+
+    assert response.status_code == 422
+
+
+def test_list_tasks_with_invalid_priority_filter_should_return_422(client: TestClient) -> None:
+    response = client.get("/tasks?priority=urgente")
 
     assert response.status_code == 422

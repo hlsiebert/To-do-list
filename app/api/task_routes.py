@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
-from app.models.tasks import TaskCreate, TaskResponse, TaskUpdate
+from app.models.tasks import TaskCreate, TaskPriority, TaskResponse, TaskStatus, TaskUpdate
 from app.repository.task_repository import TaskRepository
 from app.services.task_service import TaskService
 
@@ -47,14 +47,21 @@ def create_task(payload: TaskCreate) -> TaskResponse:
     response_model=list[TaskResponse],
     status_code=status.HTTP_200_OK,
     summary="Listar tarefas",
-    description="Retorna todas as tarefas cadastradas.",
+    description=(
+        "Retorna tarefas cadastradas. "
+        "Permite filtros opcionais por prioridade e status."
+    ),
     responses={
         200: {"description": "Lista de tarefas retornada com sucesso."},
+        422: {"description": "Filtro invalido."},
     },
 )
-def list_tasks() -> list[TaskResponse]:
-    """List all tasks."""
-    return _service.list_tasks()
+def list_tasks(
+    priority: TaskPriority | None = Query(default=None),
+    status: TaskStatus | None = Query(default=None),
+) -> list[TaskResponse]:
+    """List tasks with optional priority and status filters."""
+    return _service.list_tasks(priority=priority, status=status)
 
 
 @router.get(

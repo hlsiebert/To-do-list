@@ -7,7 +7,14 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from app.database import DEFAULT_DB_PATH, get_connection, initialize_database
-from app.models.tasks import TaskCreate, TaskPriority, TaskPrioritySource, TaskResponse, TaskUpdate
+from app.models.tasks import (
+    TaskCreate,
+    TaskPriority,
+    TaskPrioritySource,
+    TaskResponse,
+    TaskStatus,
+    TaskUpdate,
+)
 
 
 class TaskRepository:
@@ -112,10 +119,28 @@ class TaskRepository:
             raise RuntimeError("Failed to load task after creation.")
         return created_task
 
-    def list(self) -> list[TaskResponse]:
-        """Returns all tasks ordered by most recent creation first."""
+    def list(
+        self,
+        *,
+        priority: TaskPriority | None = None,
+        status: TaskStatus | None = None,
+    ) -> list[TaskResponse]:
+        """Returns tasks filtered by priority/status and ordered by recent creation."""
+        filters: list[str] = []
+        values: list[object] = []
+
+        if priority is not None:
+            filters.append("priority = ?")
+            values.append(priority)
+        if status is not None:
+            filters.append("status = ?")
+            values.append(status)
+
+        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+        query = f"SELECT * FROM tasks {where_clause} ORDER BY created_at DESC"
+
         with self._connect() as connection:
-            rows = connection.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
+            rows = connection.execute(query, values).fetchall()
         return [self._row_to_task(row) for row in rows]
 
     def get_by_id(self, task_id: UUID) -> TaskResponse | None:

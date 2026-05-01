@@ -10,6 +10,7 @@ from app.models.tasks import (
     TaskPriority,
     TaskPrioritySource,
     TaskResponse,
+    TaskStatus,
     TaskUpdate,
 )
 from app.repository.task_repository import TaskRepository
@@ -96,9 +97,14 @@ class TaskService:
             priority_source=decision.source,
         )
 
-    def list_tasks(self) -> list[TaskResponse]:
-        """Lists all persisted tasks."""
-        return self._repository.list()
+    def list_tasks(
+        self,
+        *,
+        priority: TaskPriority | None = None,
+        status: TaskStatus | None = None,
+    ) -> list[TaskResponse]:
+        """Lists persisted tasks with optional priority/status filters."""
+        return self._repository.list(priority=priority, status=status)
 
     def get_task_by_id(self, task_id: UUID) -> TaskResponse | None:
         """Returns one task by UUID when it exists."""
