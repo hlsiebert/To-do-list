@@ -37,3 +37,4 @@ local_settings.py
 *.env
 .env.*
 .DS_Store
+.env
