@@ -1,16 +1,16 @@
 # To-do List API
 
-MicroAPI de tarefas em FastAPI com prioridade assistida por IA e fallback heur�stico local.
+MicroAPI de tarefas em FastAPI com prioridade assistida por IA e fallback heurístico local.
 
 ## Vis�o Geral
 
 Este projeto implementa um MVP para gest�o interna de tarefas com:
 
 - CRUD completo de tarefas
-- Persist�ncia em SQLite
-- Camada de servi�o separada da API
-- Sugest�o de prioridade via LLM (quando dispon�vel)
-- Fallback seguro para heur�stica local
+- Persistência em SQLite
+- Camada de serviço separada da API
+- Sugestão de prioridade via LLM (quando dispon�vel)
+- Fallback seguro para heurística local
 
 ## Funcionalidades do MVP
 
@@ -21,7 +21,7 @@ Este projeto implementa um MVP para gest�o interna de tarefas com:
 - Excluir tarefa (`DELETE /tasks/{task_id}`)
 - Health check (`GET /`)
 
-## Stack T�cnica
+## Stack Técnica
 
 - Python 3.12+
 - FastAPI
@@ -51,11 +51,11 @@ tests/
   test_priority_advisor.py
 ```
 
-## Instala��o
+## Instalação
 
-1. Clone o reposit�rio.
+1. Clone o repositório.
 2. Crie e ative o ambiente virtual.
-3. Instale as depend�ncias.
+3. Instale as dependências.
 
 ```bash
 python -m venv .venv
@@ -67,7 +67,7 @@ pip install pytest
 
 ## Execu��o
 
-Suba a API com recarregamento autom�tico:
+Suba a API com recarregamento automático:
 
 ```bash
 uvicorn app.main:app --reload
@@ -81,7 +81,7 @@ Acesse:
 
 ## Testes
 
-Executar toda a su�te:
+Executar toda a suíte:
 
 ```bash
 pytest -q
@@ -111,13 +111,13 @@ pytest tests/test_priority_advisor.py -q
 
 ## Arquitetura
 
-A arquitetura segue separa��o por responsabilidades:
+A arquitetura segue separação por responsabilidades:
 
 - `API` (`app/api/task_routes.py`): entrada HTTP, status codes e tratamento de 404.
-- `Service` (`app/services/task_service.py`): regras de neg�cio e orquestra��o.
-- `Repository` (`app/repository/task_repository.py`): acesso e persist�ncia de dados em SQLite.
-- `Advisor` (`app/services/priority_advisor.py`): sugest�o de prioridade com IA/fallback.
-- `Models` (`app/models/tasks.py`): contratos de entrada e sa�da (Pydantic).
+- `Service` (`app/services/task_service.py`): regras de negócio e orquestração.
+- `Repository` (`app/repository/task_repository.py`): acesso e persistência de dados em SQLite.
+- `Advisor` (`app/services/priority_advisor.py`): sugestão de prioridade com IA/fallback.
+- `Models` (`app/models/tasks.py`): contratos de entrada e saída (Pydantic).
 
 Fluxo principal:
 
@@ -130,10 +130,10 @@ O `PriorityAdvisor` funciona em dois modos:
 1. Com `OPENAI_API_KEY` configurada:
    - tenta chamada ao endpoint de modelo
    - usa timeout curto
-   - interpreta retorno para prioridade num�rica
+   - interpreta retorno para prioridade numérica
 2. Sem chave (ou em caso de falha externa):
-   - aplica heur�stica local por palavras-chave
-   - mant�m comportamento est�vel sem interromper a API
+   - aplica heurística local por palavras-chave
+   - mantém comportamento estável sem interromper a API
 
 ## Variaveis de Ambiente
 
@@ -158,20 +158,20 @@ Definidas em `.env-example`:
 
 ## Limita��es Atuais
 
-- Sem autentica��o/autoriza��o
-- Sem pagina��o/filtros avan�ados
-- Sem migra��es formais de banco (al�m da inicializa��o/migra��o b�sica)
-- Sem su�te de testes de integra��o com banco externo
-- Depend�ncia de heur�stica simples no fallback de prioridade
+- Sem autenticação/autorização
+- Sem paginação/filtros avançados
+- Sem migrações formais de banco (além da inicialização/migração básica)
+- Sem suíte de testes de integração com banco externo
+- Dependéncia de heurística simples no fallback de prioridade
 
 ## Pr�ximos Passos
 
 - Adicionar filtros por prioridade e status nos endpoints
-- Implementar pagina��o e ordena��o por query params
-- Criar camada de configura��o por ambiente (`dev/test/prod`)
-- Adotar migra��es versionadas (ex.: Alembic)
-- Expandir testes para cen�rios de valida��o e concorr�ncia
-- Incluir observabilidade b�sica (logs estruturados + m�tricas)
+- Implementar paginação e ordenação por query params
+- Criar camada de configuração por ambiente (`dev/test/prod`)
+- Adotar migrações versionadas (ex.: Alembic)
+- Expandir testes para cenários de validação e concorrência
+- Incluir observabilidade básica (logs estruturados + métricas)
 
 ## Licenca
 
