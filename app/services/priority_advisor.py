@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+from http.client import InvalidURL
 from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib import error, request
+
+from app.models.tasks import TaskPrioritySource
 
 
 class PriorityAdvisorProtocol(Protocol):
@@ -14,6 +17,13 @@ class PriorityAdvisorProtocol(Protocol):
 
     def suggest_priority(self, title: str, description: str | None) -> int:
         """Returns a priority suggestion between 1 and 5."""
+
+    def suggest_with_source(
+        self,
+        title: str,
+        description: str | None,
+    ) -> tuple[int, TaskPrioritySource]:
+        """Returns a priority suggestion and its source."""
 
 
 @dataclass(slots=True)
@@ -35,9 +45,18 @@ class PriorityAdvisor:
 
     def suggest_priority(self, title: str, description: str | None) -> int:
         """Returns a priority from 1 (low) to 5 (high)."""
+        value, _source = self.suggest_with_source(title=title, description=description)
+        return value
+
+    def suggest_with_source(
+        self,
+        title: str,
+        description: str | None,
+    ) -> tuple[int, TaskPrioritySource]:
+        """Returns a priority from 1 to 5 and the decision source."""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            return self._heuristic_priority(title=title, description=description)
+            return self._heuristic_priority(title=title, description=description), "heuristica_fallback"
 
         llm_priority = self._suggest_with_llm(
             api_key=api_key,
@@ -45,9 +64,9 @@ class PriorityAdvisor:
             description=description,
         )
         if llm_priority is None:
-            return self._heuristic_priority(title=title, description=description)
+            return self._heuristic_priority(title=title, description=description), "heuristica_fallback"
 
-        return llm_priority
+        return llm_priority, "ia"
 
     def _suggest_with_llm(
         self,
@@ -102,7 +121,7 @@ class PriorityAdvisor:
             parsed = json.loads(body)
             text = self._extract_text(parsed)
             return self._parse_priority(text)
-        except (error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError):
+        except (error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError, InvalidURL):
             return None
 
     def _extract_text(self, response_body: dict[str, Any]) -> str:

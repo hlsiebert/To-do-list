@@ -2,11 +2,27 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import UUID
 
-from app.models.tasks import TaskCreate, TaskPriority, TaskResponse, TaskUpdate
+from app.models.tasks import (
+    TaskCreate,
+    TaskPriority,
+    TaskPrioritySource,
+    TaskResponse,
+    TaskUpdate,
+)
 from app.repository.task_repository import TaskRepository
 from app.services.priority_advisor import PriorityAdvisor, PriorityAdvisorProtocol
+
+
+@dataclass(frozen=True, slots=True)
+class PriorityDecision:
+    """Represents suggested and applied priority values."""
+
+    final_priority: TaskPriority
+    suggested_priority: TaskPriority | None
+    source: TaskPrioritySource
 
 
 class TaskService:
@@ -31,13 +47,18 @@ class TaskService:
         """Maps numeric priority from advisor into domain priority labels."""
         return self._PRIORITY_MAP.get(value, "media")
 
-    def _suggest_priority_label(self, title: str, description: str) -> TaskPriority:
-        """Gets numeric suggestion and converts it to domain priority label."""
-        suggested_priority = self._priority_advisor.suggest_priority(
+    def _suggest_priority_decision(self, title: str, description: str) -> PriorityDecision:
+        """Returns both suggested and final priority for automatic mode."""
+        value, source = self._priority_advisor.suggest_with_source(
             title=title,
             description=description,
         )
-        return self._normalize_priority(suggested_priority)
+        normalized = self._normalize_priority(value)
+        return PriorityDecision(
+            final_priority=normalized,
+            suggested_priority=normalized,
+            source=source,
+        )
 
     def _build_priority_context(
         self,
@@ -51,15 +72,29 @@ class TaskService:
 
     def create_task(self, payload: TaskCreate) -> TaskResponse:
         """Creates a task applying automatic priority suggestion."""
-        task_data = payload.model_copy(
-            update={
-                "priority": self._suggest_priority_label(
-                    title=payload.title,
-                    description=payload.description,
-                )
-            }
+        if payload.priority_mode == "manual":
+            assert payload.priority_manual is not None  # validated by model
+            suggested = self._suggest_priority_decision(
+                title=payload.title,
+                description=payload.description,
+            )
+            return self._repository.create(
+                payload,
+                priority=payload.priority_manual,
+                priority_suggested=suggested.suggested_priority,
+                priority_source="manual",
+            )
+
+        decision = self._suggest_priority_decision(
+            title=payload.title,
+            description=payload.description,
         )
-        return self._repository.create(task_data)
+        return self._repository.create(
+            payload,
+            priority=decision.final_priority,
+            priority_suggested=decision.suggested_priority,
+            priority_source=decision.source,
+        )
 
     def list_tasks(self) -> list[TaskResponse]:
         """Lists all persisted tasks."""
@@ -72,23 +107,54 @@ class TaskService:
     def update_task(self, task_id: UUID, payload: TaskUpdate) -> TaskResponse | None:
         """Updates a task and can re-evaluate priority automatically."""
         update_data = payload.model_dump(exclude_unset=True)
-        should_recalculate = (
-            "priority" not in update_data
-            and ("title" in update_data or "description" in update_data)
-        )
+        priority_mode = update_data.get("priority_mode")
+        priority_manual = update_data.get("priority_manual")
 
+        if priority_mode == "manual":
+            assert priority_manual is not None  # validated by model
+            return self._repository.update(
+                task_id,
+                payload,
+                priority=priority_manual,
+                priority_source="manual",
+            )
+
+        should_recalculate = (
+            priority_mode == "auto"
+            or (
+                priority_mode is None
+                and "priority" not in update_data
+                and ("title" in update_data or "description" in update_data)
+            )
+        )
         if should_recalculate:
             current_task = self._repository.get_by_id(task_id)
             if current_task is None:
                 return None
 
             title, description = self._build_priority_context(update_data, current_task)
-            update_data["priority"] = self._suggest_priority_label(
+            decision = self._suggest_priority_decision(
                 title=title,
                 description=description,
             )
+            return self._repository.update(
+                task_id,
+                payload,
+                priority=decision.final_priority,
+                priority_suggested=decision.suggested_priority,
+                priority_source=decision.source,
+            )
 
-        return self._repository.update(task_id, TaskUpdate(**update_data))
+        # Backward-compatible behavior for manual priority updates in old payloads.
+        if "priority" in update_data and priority_mode is None:
+            return self._repository.update(
+                task_id,
+                payload,
+                priority=update_data["priority"],
+                priority_source="manual",
+            )
+
+        return self._repository.update(task_id, payload)
 
     def delete_task(self, task_id: UUID) -> bool:
         """Deletes a task by UUID."""

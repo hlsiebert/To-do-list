@@ -27,7 +27,11 @@ class ErrorResponse(BaseModel):
     response_model=TaskResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Criar tarefa",
-    description="Cria uma nova tarefa e aplica sugestao automatica de prioridade.",
+    description=(
+        "Cria uma nova tarefa com priorizacao assistida por IA. "
+        "Use priority_mode='auto' para aceitar sugestao automatica "
+        "ou priority_mode='manual' com priority_manual para sobrescrever."
+    ),
     responses={
         201: {"description": "Tarefa criada com sucesso."},
         422: {"description": "Payload invalido."},
@@ -78,7 +82,11 @@ def get_task(task_id: UUID) -> TaskResponse:
     response_model=TaskResponse,
     status_code=status.HTTP_200_OK,
     summary="Atualizar tarefa",
-    description="Atualiza os campos informados da tarefa pelo UUID.",
+    description=(
+        "Atualiza a tarefa pelo UUID. "
+        "Use priority_mode='auto' para recalcular sugestao "
+        "ou priority_mode='manual' com priority_manual para sobrescrever."
+    ),
     responses={
         200: {"description": "Tarefa atualizada com sucesso."},
         404: {"model": ErrorResponse, "description": "Tarefa nao encontrada."},

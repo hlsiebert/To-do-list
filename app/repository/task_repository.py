@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from app.database import DEFAULT_DB_PATH, get_connection, initialize_database
-from app.models.tasks import TaskCreate, TaskResponse, TaskUpdate
+from app.models.tasks import TaskCreate, TaskPriority, TaskPrioritySource, TaskResponse, TaskUpdate
 
 
 class TaskRepository:
@@ -54,6 +54,8 @@ class TaskRepository:
             title=row["title"],
             description=row["description"],
             priority=row["priority"],
+            priority_suggested=row["priority_suggested"],
+            priority_source=row["priority_source"],
             status=row["status"],
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=(
@@ -62,7 +64,14 @@ class TaskRepository:
             due_date=(datetime.fromisoformat(row["due_date"]) if row["due_date"] else None),
         )
 
-    def create(self, task: TaskCreate) -> TaskResponse:
+    def create(
+        self,
+        task: TaskCreate,
+        *,
+        priority: TaskPriority,
+        priority_suggested: TaskPriority | None,
+        priority_source: TaskPrioritySource,
+    ) -> TaskResponse:
         """Inserts a new task and returns the persisted record."""
         now = datetime.now().isoformat()
         due_date = self._serialize_datetime(task.due_date)
@@ -71,14 +80,26 @@ class TaskRepository:
         with self._connect() as connection:
             connection.execute(
                 """
-                INSERT INTO tasks (id, title, description, priority, status, created_at, due_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO tasks (
+                    id,
+                    title,
+                    description,
+                    priority,
+                    priority_suggested,
+                    priority_source,
+                    status,
+                    created_at,
+                    due_date
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     self._task_id_param(task_id),
                     task.title,
                     task.description,
-                    task.priority,
+                    priority,
+                    priority_suggested,
+                    priority_source,
                     task.status,
                     now,
                     due_date,
@@ -109,13 +130,30 @@ class TaskRepository:
             return None
         return self._row_to_task(row)
 
-    def update(self, task_id: UUID, task_update: TaskUpdate) -> TaskResponse | None:
+    def update(
+        self,
+        task_id: UUID,
+        task_update: TaskUpdate,
+        *,
+        priority: TaskPriority | None = None,
+        priority_suggested: TaskPriority | None = None,
+        priority_source: TaskPrioritySource | None = None,
+    ) -> TaskResponse | None:
         """Updates task fields provided in payload and returns updated task."""
         current_task = self.get_by_id(task_id)
         if current_task is None:
             return None
 
-        payload = task_update.model_dump(exclude_unset=True)
+        payload = task_update.model_dump(
+            exclude_unset=True,
+            exclude={"priority_mode", "priority_manual"},
+        )
+        if priority is not None:
+            payload["priority"] = priority
+        if priority_suggested is not None:
+            payload["priority_suggested"] = priority_suggested
+        if priority_source is not None:
+            payload["priority_source"] = priority_source
         if not payload:
             return current_task
 

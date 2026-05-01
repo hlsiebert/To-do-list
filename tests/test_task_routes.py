@@ -17,6 +17,9 @@ class StubPriorityAdvisor:
     def suggest_priority(self, title: str, description: str | None) -> int:
         return 4
 
+    def suggest_with_source(self, title: str, description: str | None) -> tuple[int, str]:
+        return 4, "ia"
+
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -49,6 +52,26 @@ def test_create_task_should_return_201(client: TestClient) -> None:
     body = response.json()
     assert body["title"] == "Create endpoint"
     assert body["priority"] == "alta"
+    assert body["priority_source"] == "ia"
+
+
+def test_create_task_manual_should_override_suggestion(client: TestClient) -> None:
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Create endpoint",
+            "description": "Implement CRUD",
+            "priority_mode": "manual",
+            "priority_manual": "baixa",
+            "status": "pendente",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["priority"] == "baixa"
+    assert body["priority_suggested"] == "alta"
+    assert body["priority_source"] == "manual"
 
 
 def test_list_tasks_should_return_200(client: TestClient) -> None:
@@ -143,6 +166,20 @@ def test_create_task_with_extra_field_should_return_422(client: TestClient) -> N
             "priority": "media",
             "status": "pendente",
             "owner": "team-a",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_manual_mode_without_priority_manual_should_return_422(client: TestClient) -> None:
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Task",
+            "description": "Description",
+            "priority_mode": "manual",
+            "status": "pendente",
         },
     )
 

@@ -19,6 +19,9 @@ class StubPriorityAdvisor:
     def suggest_priority(self, title: str, description: str | None) -> int:
         return self.value
 
+    def suggest_with_source(self, title: str, description: str | None) -> tuple[int, str]:
+        return self.value, "ia"
+
 
 @pytest.fixture
 def task_service() -> TaskService:
@@ -46,7 +49,25 @@ def test_create_task_should_persist_and_return_task(task_service: TaskService) -
     assert created.title == payload.title
     assert created.description == payload.description
     assert created.priority == "alta"
+    assert created.priority_suggested == "alta"
+    assert created.priority_source == "ia"
     assert created.status == "pendente"
+
+
+def test_create_task_manual_mode_should_override_suggestion(task_service: TaskService) -> None:
+    payload = TaskCreate(
+        title="Prepare release",
+        description="Validate final checklist",
+        priority_mode="manual",
+        priority_manual="baixa",
+        status="pendente",
+    )
+
+    created = task_service.create_task(payload)
+
+    assert created.priority == "baixa"
+    assert created.priority_suggested == "alta"
+    assert created.priority_source == "manual"
 
 
 def test_list_tasks_should_return_all_created_tasks(task_service: TaskService) -> None:
@@ -89,6 +110,7 @@ def test_update_task_should_change_fields(task_service: TaskService) -> None:
             title="New task",
             description="New description",
             status="em_andamento",
+            priority_mode="auto",
         ),
     )
 
@@ -97,6 +119,27 @@ def test_update_task_should_change_fields(task_service: TaskService) -> None:
     assert updated.title == "New task"
     assert updated.description == "New description"
     assert updated.status == "em_andamento"
+    assert updated.priority == "alta"
+    assert updated.priority_source == "ia"
+
+
+def test_update_task_manual_mode_should_override_suggestion(task_service: TaskService) -> None:
+    created = task_service.create_task(
+        TaskCreate(
+            title="Task",
+            description="Description",
+            status="pendente",
+        )
+    )
+
+    updated = task_service.update_task(
+        created.id,
+        TaskUpdate(priority_mode="manual", priority_manual="critica"),
+    )
+
+    assert updated is not None
+    assert updated.priority == "critica"
+    assert updated.priority_source == "manual"
 
 
 def test_delete_task_should_remove_existing_task(task_service: TaskService) -> None:

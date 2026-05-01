@@ -22,7 +22,8 @@ class FakeHTTPResponse:
         return json.dumps(self._payload).encode("utf-8")
 
 
-def test_should_return_highest_priority_for_urgent_keywords() -> None:
+def test_should_return_highest_priority_for_urgent_keywords(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     advisor = PriorityAdvisor()
 
     priority = advisor.suggest_priority(
@@ -45,7 +46,8 @@ def test_should_return_high_priority_for_today_or_asap_keywords(monkeypatch) -> 
     assert priority == 4
 
 
-def test_should_return_low_priority_for_backlog_or_improvement_keywords() -> None:
+def test_should_return_low_priority_for_backlog_or_improvement_keywords(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     advisor = PriorityAdvisor()
 
     priority = advisor.suggest_priority(

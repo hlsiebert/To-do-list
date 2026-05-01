@@ -47,6 +47,8 @@ def _migrate_id_to_uuid(connection: sqlite3.Connection) -> None:
             title TEXT NOT NULL,
             description TEXT NOT NULL,
             priority TEXT NOT NULL,
+            priority_suggested TEXT,
+            priority_source TEXT NOT NULL DEFAULT 'manual',
             status TEXT NOT NULL DEFAULT 'pendente',
             created_at TEXT NOT NULL,
             updated_at TEXT,
@@ -56,20 +58,36 @@ def _migrate_id_to_uuid(connection: sqlite3.Connection) -> None:
     )
 
     rows = connection.execute(
-        "SELECT title, description, priority, status, created_at, updated_at, due_date FROM tasks"
+        """
+        SELECT title, description, priority, status, created_at, updated_at, due_date
+        FROM tasks
+        """
     ).fetchall()
 
     for row in rows:
         connection.execute(
             """
-            INSERT INTO tasks_new (id, title, description, priority, status, created_at, updated_at, due_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks_new (
+                id,
+                title,
+                description,
+                priority,
+                priority_suggested,
+                priority_source,
+                status,
+                created_at,
+                updated_at,
+                due_date
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 str(uuid4()),
                 row["title"],
                 row["description"],
                 row["priority"],
+                None,
+                "manual",
                 row["status"] if "status" in row.keys() else "pendente",
                 row["created_at"],
                 row["updated_at"],
@@ -91,6 +109,8 @@ def initialize_database(db_path: str = DEFAULT_DB_PATH) -> None:
                 title TEXT NOT NULL,
                 description TEXT NOT NULL,
                 priority TEXT NOT NULL,
+                priority_suggested TEXT,
+                priority_source TEXT NOT NULL DEFAULT 'manual',
                 status TEXT NOT NULL DEFAULT 'pendente',
                 created_at TEXT NOT NULL,
                 updated_at TEXT,
@@ -101,6 +121,12 @@ def initialize_database(db_path: str = DEFAULT_DB_PATH) -> None:
 
         if not _column_exists(connection, "tasks", "status"):
             connection.execute("ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'pendente'")
+        if not _column_exists(connection, "tasks", "priority_suggested"):
+            connection.execute("ALTER TABLE tasks ADD COLUMN priority_suggested TEXT")
+        if not _column_exists(connection, "tasks", "priority_source"):
+            connection.execute(
+                "ALTER TABLE tasks ADD COLUMN priority_source TEXT NOT NULL DEFAULT 'manual'"
+            )
 
         _migrate_id_to_uuid(connection)
         connection.commit()
