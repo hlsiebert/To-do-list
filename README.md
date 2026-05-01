@@ -2,7 +2,7 @@
 
 MicroAPI de tarefas em FastAPI com prioridade assistida por IA e fallback heurístico local.
 
-## Vis�o Geral
+## Visão Geral
 
 Este projeto implementa um MVP para gest�o interna de tarefas com:
 
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 pip install pytest
 ```
 
-## Execu��o
+## Execução
 
 Suba a API com recarregamento automático:
 
@@ -156,7 +156,7 @@ Definidas em `.env-example`:
 - `status`: `pendente | em_andamento | concluida`
 - `created_at`, `updated_at`, `due_date`
 
-## Limita��es Atuais
+## Limitações Atuais
 
 - Sem autenticação/autorização
 - Sem paginação/filtros avançados
@@ -164,7 +164,7 @@ Definidas em `.env-example`:
 - Sem suíte de testes de integração com banco externo
 - Dependéncia de heurística simples no fallback de prioridade
 
-## Pr�ximos Passos
+## Próximos Passos
 
 - Adicionar filtros por prioridade e status nos endpoints
 - Implementar paginação e ordenação por query params
