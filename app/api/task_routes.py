@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Response, status
+from pydantic import BaseModel
 
 from app.models.tasks import TaskCreate, TaskResponse, TaskUpdate
 from app.repository.task_repository import TaskRepository
@@ -13,6 +14,12 @@ from app.services.task_service import TaskService
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 _service = TaskService(repository=TaskRepository())
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response payload."""
+
+    detail: str
 
 
 @router.post(
@@ -54,7 +61,7 @@ def list_tasks() -> list[TaskResponse]:
     description="Retorna uma tarefa especifica pelo UUID.",
     responses={
         200: {"description": "Tarefa encontrada."},
-        404: {"description": "Tarefa nao encontrada."},
+        404: {"model": ErrorResponse, "description": "Tarefa nao encontrada."},
         422: {"description": "UUID invalido."},
     },
 )
@@ -74,7 +81,7 @@ def get_task(task_id: UUID) -> TaskResponse:
     description="Atualiza os campos informados da tarefa pelo UUID.",
     responses={
         200: {"description": "Tarefa atualizada com sucesso."},
-        404: {"description": "Tarefa nao encontrada."},
+        404: {"model": ErrorResponse, "description": "Tarefa nao encontrada."},
         422: {"description": "Payload ou UUID invalido."},
     },
 )
@@ -93,7 +100,7 @@ def update_task(task_id: UUID, payload: TaskUpdate) -> TaskResponse:
     description="Remove uma tarefa pelo UUID.",
     responses={
         204: {"description": "Tarefa excluida com sucesso."},
-        404: {"description": "Tarefa nao encontrada."},
+        404: {"model": ErrorResponse, "description": "Tarefa nao encontrada."},
         422: {"description": "UUID invalido."},
     },
 )

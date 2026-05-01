@@ -120,6 +120,35 @@ def test_create_task_with_invalid_priority_should_return_422(client: TestClient)
     assert response.status_code == 422
 
 
+def test_create_task_with_invalid_status_should_return_422(client: TestClient) -> None:
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Invalid status",
+            "description": "Status out of domain",
+            "priority": "media",
+            "status": "aberta",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_extra_field_should_return_422(client: TestClient) -> None:
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Task with unknown field",
+            "description": "Should fail",
+            "priority": "media",
+            "status": "pendente",
+            "owner": "team-a",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_get_task_with_invalid_uuid_should_return_422(client: TestClient) -> None:
     response = client.get("/tasks/not-a-uuid")
 

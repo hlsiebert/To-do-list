@@ -12,6 +12,7 @@ TaskStatus = Literal["pendente", "em_andamento", "concluida"]
 
 class TaskCreate(BaseModel):
     """Payload for creating a new task."""
+    model_config = ConfigDict(extra="forbid")
 
     title: str = Field(..., min_length=1, max_length=120)
     description: str = Field(..., min_length=1, max_length=1000)
@@ -22,6 +23,7 @@ class TaskCreate(BaseModel):
 
 class TaskUpdate(BaseModel):
     """Payload for updating an existing task."""
+    model_config = ConfigDict(extra="forbid")
 
     title: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, min_length=1, max_length=1000)

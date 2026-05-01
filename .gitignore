@@ -38,3 +38,6 @@ local_settings.py
 .env.*
 .DS_Store
 .env
+
+tests/_runtime_db/
+tests/_tmp_pytest_run/
